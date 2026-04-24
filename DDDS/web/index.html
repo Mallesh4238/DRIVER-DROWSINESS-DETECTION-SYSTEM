@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Drowsiness Detection | AI Safety System</title>
+    <meta name="description" content="AI-powered Driver Drowsiness Detection System with real-time face monitoring, emergency alerts, and multilingual voice guidance.">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- MediaPipe Face Mesh -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <!-- ========== SPLASH SCREEN ========== -->
+    <div id="splash-screen" class="splash-screen">
+        <!-- Animated Road Canvas -->
+        <canvas id="road-canvas"></canvas>
+
+        <!-- Animated Background Particles -->
+        <div class="splash-particles" id="splash-particles"></div>
+
+        <!-- Top decorative line -->
+        <div class="splash-top-line"></div>
+
+        <!-- Main Content -->
+        <div class="splash-content">
+            <!-- Logo & Title -->
+            <div class="splash-header" id="splash-header">
+                <div class="splash-icon" id="hero-eye">🚗</div>
+                <h1 class="splash-title">DRIVER DROWSINESS</h1>
+                <h1 class="splash-title accent">DETECTION SYSTEM</h1>
+                <div class="splash-subtitle">AI-Powered Safety Monitoring</div>
+                <div class="splash-divider"></div>
+            </div>
+
+            <!-- Language Selection -->
+            <div class="language-section" id="language-section">
+                <p class="lang-prompt">SELECT YOUR LANGUAGE / భాషను ఎంచుకోండి</p>
+                <div class="language-grid">
+                    <button class="lang-card" data-lang="te" onclick="selectLanguage('te')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/in.png" alt="🇮🇳">
+                        <span class="lang-name">తెలుగు</span>
+                        <span class="lang-eng">Telugu</span>
+                    </button>
+                    <button class="lang-card" data-lang="hi" onclick="selectLanguage('hi')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/in.png" alt="🇮🇳">
+                        <span class="lang-name">हिन्दी</span>
+                        <span class="lang-eng">Hindi</span>
+                    </button>
+                    <button class="lang-card" data-lang="en" onclick="selectLanguage('en')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/gb.png" alt="🇬🇧">
+                        <span class="lang-name">English</span>
+                        <span class="lang-eng">English</span>
+                    </button>
+                    <button class="lang-card" data-lang="ta" onclick="selectLanguage('ta')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/in.png" alt="🇮🇳">
+                        <span class="lang-name">தமிழ்</span>
+                        <span class="lang-eng">Tamil</span>
+                    </button>
+                    <button class="lang-card" data-lang="kn" onclick="selectLanguage('kn')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/in.png" alt="🇮🇳">
+                        <span class="lang-name">ಕನ್ನಡ</span>
+                        <span class="lang-eng">Kannada</span>
+                    </button>
+                    <button class="lang-card" data-lang="ml" onclick="selectLanguage('ml')">
+                        <img class="lang-flag-img" src="https://flagcdn.com/w40/in.png" alt="🇮🇳">
+                        <span class="lang-name">മലയാളം</span>
+                        <span class="lang-eng">Malayalam</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Greeting & Start Button (hidden initially) -->
+            <div class="greeting-section hidden" id="greeting-section">
+                <div class="greeting-box">
+                    <div class="greeting-icon" id="greeting-icon">🔊</div>
+                    <p class="greeting-text" id="greeting-text"></p>
+                </div>
+
+                <!-- Description lines (spoken, shown as text too) -->
+                <div class="project-desc" id="project-desc"></div>
+
+                <!-- Enter Button -->
+                <button class="enter-btn" id="enter-btn" onclick="enterApp()">
+                    <span class="enter-icon">🚀</span>
+                    <span class="enter-text" id="enter-text">START SYSTEM</span>
+                    <div class="enter-glow"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom decorative -->
+        <div class="splash-footer">
+            <span>⚡ Powered by Team 8</span>
+        </div>
+    </div>
+
+    <!-- ========== MAIN APP (hidden initially) ========== -->
+    <div class="app-container" id="app-container" style="display: none;">
+        <!-- Header -->
+        <header>
+            <div class="logo-container">
+                <div class="logo-icon">👁️</div>
+                <h1>DRIVER SAFETY <span class="highlight">AI</span></h1>
+            </div>
+            <div class="system-status">
+                <span class="status-dot" id="system-dot"></span>
+                <span id="system-text">SYSTEM STANDBY</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Video Feed Section -->
+            <div class="video-container">
+                <video id="input-video" playsinline></video>
+                <canvas id="output-canvas"></canvas>
+                <div class="hud-overlay">
+                    <div class="scan-line"></div>
+                    <div class="corner top-left"></div>
+                    <div class="corner top-right"></div>
+                    <div class="corner bottom-left"></div>
+                    <div class="corner bottom-right"></div>
+                </div>
+                <!-- Timer Overlay -->
+                <div id="timer-overlay" class="timer-overlay hidden">
+                    <div class="timer-value" id="timer-value">0.0s</div>
+                    <div class="timer-milestones">
+                        <div class="milestone" id="ms-sound">
+                            <span class="ms-icon">🔊</span>
+                            <span class="ms-label">SOUND 2s</span>
+                            <div class="ms-bar">
+                                <div class="ms-fill" id="ms-sound-fill"></div>
+                            </div>
+                        </div>
+                        <div class="milestone" id="ms-sms">
+                            <span class="ms-icon">📱</span>
+                            <span class="ms-label">SMS 5s</span>
+                            <div class="ms-bar">
+                                <div class="ms-fill" id="ms-sms-fill"></div>
+                            </div>
+                        </div>
+                        <div class="milestone" id="ms-capture">
+                            <span class="ms-icon">📸</span>
+                            <span class="ms-label">CAPTURE 10s</span>
+                            <div class="ms-bar">
+                                <div class="ms-fill" id="ms-capture-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="loading-spinner" class="spinner hidden"></div>
+            </div>
+
+            <!-- Stats & Controls Panel -->
+            <aside class="sidebar">
+                <!-- Status Card -->
+                <div class="card status-card">
+                    <h3>DRIVER STATUS</h3>
+                    <div id="driver-status" class="status-display monitoring">
+                        <h2>MONITORING</h2>
+                    </div>
+                </div>
+
+                <!-- Metrics -->
+                <div class="card metrics-card">
+                    <div class="metric-item">
+                        <div class="metric-label">
+                            <span>EYE ASPECT RATIO</span>
+                            <span id="ear-value" class="value">0.000</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="ear-bar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-item">
+                        <div class="metric-label">
+                            <span>MOUTH ASPECT RATIO</span>
+                            <span id="mar-value" class="value">0.000</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="mar-bar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Card -->
+                <div class="card location-card">
+                    <h3>📍 GPS LOCATION</h3>
+                    <div class="location-info">
+                        <div id="location-status" class="location-status">Acquiring...</div>
+                        <div id="location-coords" class="location-coords hidden">
+                            <span id="location-lat" class="coord">--</span><br>
+                            <span id="location-lon" class="coord">--</span>
+                        </div>
+                        <div id="location-address" class="location-address hidden">
+                            <span id="address-text">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="controls">
+                    <button id="start-btn" class="btn primary">
+                        <span class="icon">🚀</span> INITIALIZE SYSTEM
+                    </button>
+                    <button id="stop-btn" class="btn danger" disabled>
+                        <span class="icon">🛑</span> STOP MONITORING
+                    </button>
+                </div>
+
+                <!-- Logs -->
+                <div class="card logs-card">
+                    <h3>SYSTEM LOGS</h3>
+                    <div id="logs-container" class="logs-area">
+                        <p class="log-entry">System ready...</p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Hidden audio element for alarm -->
+    <audio id="alarm-audio" src="alarm.mp3" loop></audio>
+
+    <!-- ============================================================
+         SPLASH SCREEN SCRIPT
+         ============================================================ -->
+    <script>
+        // ========== LANGUAGE DATA ==========
+        const LANG_DATA = {
+            te: {
+                greeting: "నమస్కారం డ్రైవర్ సాబ్!",
+                voiceGreeting: "నమస్కారం డ్రైవర్ సాబ్! మీ రక్షణ మా బాధ్యత.",
+                description: [
+                    "🛡️ ఈ సిస్టమ్ మీ భద్రత కోసం రూపొందించబడింది.",
+                    "👁️ AI కెమెరా ద్వారా మీ కళ్ళు మరియు ముఖం ను నిరంతరం పర్యవేక్షిస్తుంది.",
+                    "🚨 నిద్ర మత్తు గుర్తిస్తే అలారం, SMS మరియు ఫోటో క్యాప్చర్ చేస్తుంది."
+                ],
+                startBtn: "సిస్టమ్ ప్రారంభించండి",
+                voiceLang: "te-IN",
+                drowsinessAlert: "హెచ్చరిక! మీరు నిద్ర పోతున్నట్లు కనిపిస్తుంది. దయచేసి జాగ్రత్తగా ఉండండి!",
+                locationAlert: "మీ ప్రస్తుత స్థానం"
+            },
+            hi: {
+                greeting: "नमस्ते ड्राइवर साब!",
+                voiceGreeting: "नमस्ते ड्राइवर साब! आपकी सुरक्षा हमारी ज़िम्मेदारी है.",
+                description: [
+                    "🛡️ यह सिस्टम ड्राइवर की सुरक्षा के लिए बनाया गया है.",
+                    "👁️ AI कैमरा से आपकी आँखें और चेहरे को लगातार मॉनिटर करता है.",
+                    "🚨 नींद का पता चलने पर अलार्म, SMS और फ़ोटो कैप्चर होता है."
+                ],
+                startBtn: "सिस्टम शुरू करें",
+                voiceLang: "hi-IN",
+                drowsinessAlert: "सावधान! आप सो रहे हैं। कृपया जागते रहें और ध्यान दें!",
+                locationAlert: "आपका वर्तमान स्थान"
+            },
+            en: {
+                greeting: "Hello Driver Saab!",
+                voiceGreeting: "Hello Driver Saab! Your safety is our responsibility.",
+                description: [
+                    "🛡️ This system is designed for driver safety on the road.",
+                    "👁️ AI camera continuously monitors your eyes and face for drowsiness.",
+                    "🚨 If drowsiness is detected, it triggers alarm, sends SMS, and captures photos."
+                ],
+                startBtn: "START SYSTEM",
+                voiceLang: "en-IN",
+                drowsinessAlert: "Warning! You appear to be drowsy. Please stay alert and focus!",
+                locationAlert: "Your current location is"
+            },
+            ta: {
+                greeting: "வணக்கம் டிரைவர் சாப்!",
+                voiceGreeting: "வணக்கம் டிரைவர் சாப்! உங்கள் பாதுகாப்பு எங்கள் பொறுப்பு.",
+                description: [
+                    "🛡️ இந்த அமைப்பு ஓட்டுநரின் பாதுகாப்பிற்காக வடிவமைக்கப்பட்டுள்ளது.",
+                    "👁️ AI கேமரா உங்கள் கண்கள் மற்றும் முகத்தை தொடர்ந்து கண்காணிக்கிறது.",
+                    "🚨 தூக்கம் கண்டறியப்பட்டால் அலாரம், SMS மற்றும் புகைப்படம் எடுக்கப்படும்."
+                ],
+                startBtn: "சிஸ்டத்தைத் தொடங்கு",
+                voiceLang: "ta-IN",
+                drowsinessAlert: "எச்சரிக்கை! நீங்கள் தூங்குவது போல தோன்றுகிறது. தயவுசெய்து விழித்திருக்கவும்!",
+                locationAlert: "உங்கள் தற்போதைய இடம்"
+            },
+            kn: {
+                greeting: "ನಮಸ್ಕಾರ ಡ್ರೈವರ್ ಸಾಬ್!",
+                voiceGreeting: "ನಮಸ್ಕಾರ ಡ್ರೈವರ್ ಸಾಬ್! ನಿಮ್ಮ ಸುರಕ್ಷತೆ ನಮ್ಮ ಜವಾಬ್ದಾರಿ.",
+                description: [
+                    "🛡️ ಈ ವ್ಯವಸ್ಥೆಯು ಚಾಲಕರ ಸುರಕ್ಷತೆಗಾಗಿ ವಿನ್ಯಾಸಗೊಳಿಸಲಾಗಿದೆ.",
+                    "👁️ AI ಕ್ಯಾಮೆರಾ ನಿಮ್ಮ ಕಣ್ಣುಗಳು ಮತ್ತು ಮುಖವನ್ನು ನಿರಂತರವಾಗಿ ಮೇಲ್ವಿಚಾರಣೆ ಮಾಡುತ್ತದೆ.",
+                    "🚨 ನಿದ್ರೆ ಪತ್ತೆಯಾದರೆ ಅಲಾರಂ, SMS ಮತ್ತು ಫೋಟೋ ಕ್ಯಾಪ್ಚರ್ ಆಗುತ್ತದೆ."
+                ],
+                startBtn: "ಸಿಸ್ಟಮ್ ಪ್ರಾರಂಭಿಸಿ",
+                voiceLang: "kn-IN",
+                drowsinessAlert: "ಎಚ್ಚರಿಕೆ! ನೀವು ನಿದ್ರೆ ಹೋಗುತ್ತಿರುವಂತೆ ತೋರುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಜಾಗೃತರಾಗಿರಿ!",
+                locationAlert: "ನಿಮ್ಮ ಪ್ರಸ್ತುತ ಸ್ಥಳ"
+            },
+            ml: {
+                greeting: "നമസ്കാരം ഡ്രൈവർ സാബ്!",
+                voiceGreeting: "നമസ്കാരം ഡ്രൈവർ സാബ്! നിങ്ങളുടെ സുരക്ഷ ഞങ്ങളുടെ ഉത്തരവാദിത്തമാണ്.",
+                description: [
+                    "🛡️ ഈ സിസ്റ്റം ഡ്രൈവറുടെ സുരക്ഷയ്ക്കായി രൂപകൽപ്പന ചെയ്തിരിക്കുന്നു.",
+                    "👁️ AI ക്യാമറ നിങ്ങളുടെ കണ്ണുകളും മുഖവും തുടർച്ചയായി നിരീക്ഷിക്കുന്നു.",
+                    "🚨 ഉറക്കം കണ്ടെത്തിയാൽ അലാറം, SMS, ഫോട്ടോ ക്യാപ്ചർ എന്നിവ പ്രവർത്തിക്കും."
+                ],
+                startBtn: "സിസ്റ്റം ആരംഭിക്കുക",
+                voiceLang: "ml-IN",
+                drowsinessAlert: "ജാഗ്രത! നിങ്ങൾ ഉറങ്ങുന്നതായി തോന്നുന്നു. ദയവായി ജാഗരൂകരായിരിക്കുക!",
+                locationAlert: "നിങ്ങളുടെ നിലവിലെ സ്ഥാനം"
+            }
+        };
+
+        let selectedLang = null;
+
+        // ========== ANIMATED ROAD CANVAS ==========
+        (function initRoadAnimation() {
+            const canvas = document.getElementById('road-canvas');
+            const ctx = canvas.getContext('2d');
+            let w, h;
+            let animId;
+
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const VP_Y = 0.38;
+            const VP_X = 0.5;
+
+            // Stars
+            const stars = [];
+            for (let i = 0; i < 120; i++) {
+                stars.push({
+                    x: Math.random(),
+                    y: Math.random() * 0.55,
+                    r: Math.random() * 1.2 + 0.3,
+                    blink: Math.random() * Math.PI * 2,
+                    speed: 0.5 + Math.random() * 2
+                });
+            }
+
+            let dashOffset = 0;
+
+            function draw(t) {
+                ctx.clearRect(0, 0, w, h);
+
+                // Night Sky
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.65);
+                skyGrad.addColorStop(0, '#020810');
+                skyGrad.addColorStop(0.5, '#061020');
+                skyGrad.addColorStop(1, '#0a1628');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, w, h * 0.65);
+
+                // Stars
+                for (const s of stars) {
+                    const alpha = 0.3 + 0.5 * Math.sin(t * 0.001 * s.speed + s.blink);
+                    ctx.beginPath();
+                    ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(200, 220, 255, ${alpha})`;
+                    ctx.fill();
+                }
+
+                const vpx = w * VP_X;
+                const vpy = h * VP_Y;
+
+                // Road polygon
+                ctx.beginPath();
+                ctx.moveTo(vpx - 2, vpy);
+                ctx.lineTo(-w * 0.15, h);
+                ctx.lineTo(w * 1.15, h);
+                ctx.lineTo(vpx + 2, vpy);
+                ctx.closePath();
+                const roadGrad = ctx.createLinearGradient(0, vpy, 0, h);
+                roadGrad.addColorStop(0, '#0a0e14');
+                roadGrad.addColorStop(0.3, '#101820');
+                roadGrad.addColorStop(1, '#151e2a');
+                ctx.fillStyle = roadGrad;
+                ctx.fill();
+
+                // Road edges
+                ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(vpx - 1, vpy);
+                ctx.lineTo(w * 0.1, h);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(vpx + 1, vpy);
+                ctx.lineTo(w * 0.9, h);
+                ctx.stroke();
+
+                // Center dashes
+                dashOffset += 0.004;
+                const numDashes = 14;
+                for (let i = 0; i < numDashes; i++) {
+                    const tVal = ((i / numDashes) + dashOffset) % 1;
+                    const perspT = tVal * tVal;
+                    const y = vpy + perspT * (h - vpy);
+                    const x = vpx;
+                    const dashLen = 2 + perspT * 30;
+                    const dashW = 0.5 + perspT * 3;
+                    const alpha = perspT * 0.6;
+                    ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`;
+                    ctx.fillRect(x - dashW / 2, y, dashW, dashLen);
+                }
+
+                // Distant glow
+                const hlGrad = ctx.createRadialGradient(vpx, vpy, 0, vpx, vpy, h * 0.25);
+                hlGrad.addColorStop(0, 'rgba(0, 229, 255, 0.06)');
+                hlGrad.addColorStop(0.5, 'rgba(61, 139, 253, 0.02)');
+                hlGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = hlGrad;
+                ctx.fillRect(0, 0, w, h);
+
+                // Horizon glow
+                const hrzGrad = ctx.createRadialGradient(vpx, vpy, 0, vpx, vpy, w * 0.4);
+                const pulse = 0.03 + 0.015 * Math.sin(t * 0.0008);
+                hrzGrad.addColorStop(0, `rgba(124, 77, 255, ${pulse})`);
+                hrzGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = hrzGrad;
+                ctx.fillRect(0, 0, w, h);
+
+                animId = requestAnimationFrame(draw);
+            }
+
+            animId = requestAnimationFrame(draw);
+
+            // Stop animation when splash is hidden
+            const observer = new MutationObserver(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash && splash.style.display === 'none') {
+                    cancelAnimationFrame(animId);
+                }
+            });
+            observer.observe(document.getElementById('splash-screen'), { attributes: true, attributeFilter: ['style'] });
+        })();
+
+        // ========== CREATE PARTICLES ==========
+        function createParticles() {
+            const container = document.getElementById('splash-particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (4 + Math.random() * 5) + 's';
+                const size = (1.5 + Math.random() * 3) + 'px';
+                particle.style.width = size;
+                particle.style.height = size;
+                const colors = ['rgba(0,229,255,0.6)', 'rgba(61,139,253,0.5)', 'rgba(124,77,255,0.4)', 'rgba(0,230,118,0.3)'];
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // ========== GOOGLE TTS (server-proxied, works for ALL languages) ==========
+        let currentGoogleTTSAudio = null;
+        let googleTTSQueue = [];
+        let isPlayingGoogleTTS = false;
+        let currentSpeechId = 0;
+
+        function splitTextIntoChunks(text, maxLen) {
+            const chunks = [];
+            const sentences = text.split(/(?<=[.!?।\u0964…])\s*|\s*\.\.\.\s*/);
+            let current = '';
+
+            for (const sentence of sentences) {
+                if (!sentence.trim()) continue;
+                if ((current + ' ' + sentence).length > maxLen && current.length > 0) {
+                    chunks.push(current.trim());
+                    current = sentence;
+                } else {
+                    current = current ? current + ' ' + sentence : sentence;
+                }
+            }
+            if (current.trim()) chunks.push(current.trim());
+
+            const finalChunks = [];
+            for (const chunk of chunks) {
+                if (chunk.length > maxLen) {
+                    for (let i = 0; i < chunk.length; i += maxLen) {
+                        finalChunks.push(chunk.substring(i, i + maxLen));
+                    }
+                } else {
+                    finalChunks.push(chunk);
+                }
+            }
+            return finalChunks.length > 0 ? finalChunks : [text.substring(0, maxLen)];
+        }
+
+        function speakWithGoogleTTS(text, lang, icon) {
+            stopGoogleTTS();
+
+            const chunks = splitTextIntoChunks(text, 180);
+            googleTTSQueue = chunks.map(chunk => ({
+                text: chunk,
+                lang: lang
+            }));
+
+            isPlayingGoogleTTS = true;
+            playNextGoogleTTSChunk(icon);
+        }
+
+        function playNextGoogleTTSChunk(icon) {
+            if (!isPlayingGoogleTTS || googleTTSQueue.length === 0) {
+                isPlayingGoogleTTS = false;
+                if (icon) icon.classList.remove('speaking');
+                return;
+            }
+
+            const chunk = googleTTSQueue.shift();
+            const encodedText = encodeURIComponent(chunk.text);
+            const url = `/api/tts?text=${encodedText}&lang=${chunk.lang}`;
+
+            const audio = new Audio(url);
+            currentGoogleTTSAudio = audio;
+
+            audio.onended = () => {
+                currentGoogleTTSAudio = null;
+                playNextGoogleTTSChunk(icon);
+            };
+
+            audio.onerror = (e) => {
+                console.error('Google TTS chunk failed:', e);
+                currentGoogleTTSAudio = null;
+                playNextGoogleTTSChunk(icon);
+            };
+
+            audio.play().catch(e => {
+                console.error('Google TTS play failed:', e);
+                currentGoogleTTSAudio = null;
+                playNextGoogleTTSChunk(icon);
+            });
+        }
+
+        function stopGoogleTTS() {
+            isPlayingGoogleTTS = false;
+            googleTTSQueue = [];
+            if (currentGoogleTTSAudio) {
+                currentGoogleTTSAudio.pause();
+                currentGoogleTTSAudio.currentTime = 0;
+                currentGoogleTTSAudio = null;
+            }
+        }
+
+        // ========== STRIP EMOJIS FOR TTS ==========
+        function stripEmojis(text) {
+            return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
+        }
+
+        // ========== LANGUAGE SELECTION ==========
+        function selectLanguage(lang) {
+            console.log('selectLanguage called with:', lang);
+
+            try {
+                selectedLang = lang;
+                sessionStorage.setItem('selectedLang', lang);
+                const data = LANG_DATA[lang];
+
+                if (!data) {
+                    console.error('No language data for:', lang);
+                    return;
+                }
+
+                // Highlight selected card
+                document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
+                document.querySelector(`.lang-card[data-lang="${lang}"]`)?.classList.add('selected');
+
+                // Show greeting section
+                const greetingSection = document.getElementById('greeting-section');
+                if (greetingSection) {
+                    greetingSection.classList.remove('hidden');
+                    // Scroll greeting into view so start button is visible
+                    setTimeout(() => {
+                        greetingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+
+                // Set greeting text with typewriter effect
+                const greetingText = document.getElementById('greeting-text');
+                if (greetingText) {
+                    greetingText.textContent = '';
+                    typeWriter(greetingText, data.greeting, 0, 60);
+                }
+
+                // Show description lines with stagger animation
+                const descContainer = document.getElementById('project-desc');
+                if (descContainer) {
+                    descContainer.innerHTML = '';
+                    data.description.forEach((line, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'desc-line';
+                        div.textContent = line;
+                        div.style.animationDelay = (0.3 + idx * 0.2) + 's';
+                        descContainer.appendChild(div);
+                    });
+                }
+
+                // Set start button text
+                const enterText = document.getElementById('enter-text');
+                if (enterText) {
+                    enterText.textContent = data.startBtn;
+                }
+
+                // Speak greeting + description using Google TTS (works for ALL languages)
+                window.speechSynthesis.cancel();
+                stopGoogleTTS();
+                currentSpeechId++;
+
+                const icon = document.getElementById('greeting-icon');
+                if (icon) icon.classList.add('speaking');
+
+                // Strip emojis from speech text so TTS doesn't choke
+                const cleanGreeting = stripEmojis(data.voiceGreeting);
+                const cleanDesc = data.description.map(d => stripEmojis(d)).join(' ... ');
+                const fullSpeech = cleanGreeting + ' ... ' + cleanDesc;
+                const langBase = data.voiceLang.split('-')[0];
+
+                // Use Google TTS proxy for reliable multilingual speech
+                speakWithGoogleTTS(fullSpeech, langBase, icon);
+
+            } catch (error) {
+                console.error('Error in selectLanguage:', error);
+            }
+        }
+
+        // ========== TYPEWRITER EFFECT ==========
+        function typeWriter(element, text, index, speed) {
+            try {
+                if (!element) return;
+                if (index < text.length) {
+                    element.textContent += text.charAt(index);
+                    setTimeout(() => typeWriter(element, text, index + 1, speed), speed);
+                }
+            } catch (error) {
+                console.error('Error in typeWriter:', error);
+            }
+        }
+
+        // ========== DROWSINESS ALERT SPEECH ==========
+        function speakDrowsinessAlert(lang, address) {
+            window.speechSynthesis.cancel();
+            stopGoogleTTS();
+
+            const data = LANG_DATA[lang];
+            if (!data) return;
+
+            let alertText = data.drowsinessAlert;
+            if (address) {
+                alertText += ". " + data.locationAlert + " " + address;
+            }
+
+            const langBase = data.voiceLang.split('-')[0];
+            speakWithGoogleTTS(alertText, langBase, null);
+        }
+
+        // ========== ENTER APP ==========
+        function enterApp() {
+            const splash = document.getElementById('splash-screen');
+            const app = document.getElementById('app-container');
+
+            window.speechSynthesis.cancel();
+            stopGoogleTTS();
+
+            splash.classList.add('fade-out');
+
+            setTimeout(() => {
+                splash.style.display = 'none';
+                app.style.display = 'flex';
+                app.classList.add('fade-in');
+            }, 800);
+        }
+    </script>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

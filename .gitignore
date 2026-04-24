@@ -1,0 +1,13 @@
+# Environment secrets
+.env
+
+# Push error logs
+push_error.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Captures (images)
+DDDS/captures/
